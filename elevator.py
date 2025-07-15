@@ -4,7 +4,12 @@ from cosmic import CosmicUnicorn
 from picographics import PicoGraphics, DISPLAY_COSMIC_UNICORN as DISPLAY
 from audio import WavPlayer
 
+# Volume settings
+VOLUME_HIGH = 0.5
+VOLUME_LOW = 0.2
+
 sound = WavPlayer(0, 10, 11, 9, amp_enable=22)
+sound.set_volume(VOLUME_LOW)
 cosmic = CosmicUnicorn()
 '''
 Display scrolling wisdom, quotes or greetz.
@@ -31,12 +36,14 @@ graphics = PicoGraphics(DISPLAY)
 # Basic settings
 graphics.set_font("bitmap8")
 cu.set_brightness(0.8)
+cu.set_volume(VOLUME_LOW)
 
 width = CosmicUnicorn.WIDTH
 height = CosmicUnicorn.HEIGHT
 
-STATE_CURRENT_FLOOR = 0
-STATE_TARGET_FLOOR = 5
+STATE_CURRENT_FLOOR = -1
+STATE_START_FLOOR = -1
+STATE_TARGET_FLOOR = 10
 STATE_DIRECTION = 0
 
 def pressed():
@@ -74,7 +81,13 @@ last_time = time.ticks_ms()
 
 while True:
     # if A, B, C, or D are pressed then reset
-    if pressed() is not None:
+    if cu.is_pressed(CosmicUnicorn.SWITCH_A):
+        # Reverse direction by swapping current and target floor
+        STATE_START_FLOOR, STATE_TARGET_FLOOR = STATE_TARGET_FLOOR, STATE_START_FLOOR
+        STATE_CURRENT_FLOOR = STATE_START_FLOOR
+        last_time = time.ticks_ms()
+        time.sleep(0.2)  # debounce
+    elif pressed() is not None:
         machine.reset()
     time_ms = time.ticks_ms()
 
@@ -91,8 +104,11 @@ while True:
     else:
         STATE_DIRECTION=0
 
-    if STATE_CURRENT_FLOOR < STATE_TARGET_FLOOR and time_ms - last_time > HOLD_TIME_S * 1000:
-        STATE_CURRENT_FLOOR = STATE_CURRENT_FLOOR + 1
+    if STATE_CURRENT_FLOOR != STATE_TARGET_FLOOR and time_ms - last_time > HOLD_TIME_S * 1000:
+        if STATE_CURRENT_FLOOR < STATE_TARGET_FLOOR:
+            STATE_CURRENT_FLOOR += 1
+        else:
+            STATE_CURRENT_FLOOR -= 1
         if STATE_CURRENT_FLOOR == STATE_TARGET_FLOOR:
             sound.play_wav("doorbell.wav", False)
         else:
@@ -109,11 +125,20 @@ while True:
     graphics.line(0,31,0,0)
         
     if time_ms - last_time > STEP_TIME * 1000: 
-        draw_text(f'{STATE_CURRENT_FLOOR}', x=5, y=10)
+        floor_str = f'{STATE_CURRENT_FLOOR}'
+        x_pos = 5
+        if STATE_CURRENT_FLOOR < 0:
+            x_pos -= 2
+        draw_text(floor_str, x=x_pos, y=10)
 
-    if STATE_DIRECTION==1:
+    if STATE_CURRENT_FLOOR < STATE_TARGET_FLOOR and STATE_CURRENT_FLOOR != STATE_START_FLOOR:
+        # Up arrow
         graphics.set_pen(graphics.create_pen(int(MESSAGE_COLOUR[0]), int(MESSAGE_COLOUR[1]), int(MESSAGE_COLOUR[2])))
         graphics.triangle(22, 10, 16, 20, 28, 20)
+    elif STATE_CURRENT_FLOOR > STATE_TARGET_FLOOR and STATE_CURRENT_FLOOR != STATE_START_FLOOR:
+        # Down arrow
+        graphics.set_pen(graphics.create_pen(int(MESSAGE_COLOUR[0]), int(MESSAGE_COLOUR[1]), int(MESSAGE_COLOUR[2])))
+        graphics.triangle(22, 20, 16, 10, 28, 10)
     # draw_text(MESSAGE, x=PADDING - shift, y=2)
 
     # update the display

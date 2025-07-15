@@ -65,6 +65,7 @@ class WavPlayer:
         # Reserve a variable for audio samples used for tones
         self.__tone_samples = None
         self.__queued_samples = None
+        self.__volume = 1.0  # Default to full volume
 
     def set_root(self, root):
         self.__root = root.rstrip("/") + "/"
@@ -103,13 +104,13 @@ class WavPlayer:
         samples_per_cycle = self.TONE_SAMPLE_RATE // frequency
         sample_size_in_bytes = self.TONE_BITS_PER_SAMPLE // 8
         samples = bytearray(self.TONE_FULL_WAVES * samples_per_cycle * sample_size_in_bytes)
-        range = pow(2, self.TONE_BITS_PER_SAMPLE) // 2
+        sample_range = pow(2, self.TONE_BITS_PER_SAMPLE) // 2
 
         format = "<h" if self.TONE_BITS_PER_SAMPLE == 16 else "<l"
 
         # Populate the buffer with multiple cycles to avoid it completing too quickly and causing drop outs
         for i in range(samples_per_cycle * self.TONE_FULL_WAVES):
-            sample = int((range - 1) * (math.sin(2 * math.pi * i / samples_per_cycle)) * amplitude)
+            sample = int((sample_range - 1) * (math.sin(2 * math.pi * i / samples_per_cycle)) * amplitude)
             struct.pack_into(format, samples, i * sample_size_in_bytes, sample)
 
         # Are we not already playing tones?
@@ -149,6 +150,12 @@ class WavPlayer:
 
     def is_paused(self):
         return self.__state == WavPlayer.PAUSE
+
+    def set_volume(self, volume):
+        self.__volume = max(0.0, min(1.0, float(volume)))
+
+    def get_volume(self):
+        return self.__volume
 
     def __start_i2s(self, bits=16, format=I2S.MONO, rate=44_100, state=STOP, mode=MODE_WAV):
         import gc
@@ -193,6 +200,16 @@ class WavPlayer:
             if self.__mode == WavPlayer.MODE_WAV:
                 num_read = self.__wav_file.readinto(self.__wav_samples_mv)      # Read the next section of the WAV file
                 self.total_bytes_read += num_read
+                # Software volume control: scale 16-bit PCM samples in-place
+                if num_read > 0 and self.__volume < 0.99:
+                    # Only scale if not full volume
+                    import struct
+                    for i in range(0, num_read, 2):
+                        sample = struct.unpack_from('<h', self.__wav_samples_mv, i)[0]
+                        scaled = int(sample * self.__volume)
+                        # Clamp to 16-bit signed range
+                        scaled = max(-32768, min(32767, scaled))
+                        struct.pack_into('<h', self.__wav_samples_mv, i, scaled)
                 # Have we reached the end of the file?
                 if num_read == 0:
                     # Do we want to loop the WAV playback?
