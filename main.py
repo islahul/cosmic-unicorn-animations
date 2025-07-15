@@ -11,9 +11,6 @@ MENU_TEXT_OFFSET_X = 3 + MENU_CIRCLE_RADIUS  # x offset for text from left
 MENU_OPTION_SPACING_Y = 8    # vertical spacing between options
 MENU_CIRCLE_CENTER_OFFSET_Y = 2 + MENU_CIRCLE_RADIUS  # offset to center circle with text
 
-# overclock to 200Mhz
-machine.freq(200000000)
-
 # create cosmic object and graphics surface for drawing
 cosmic = CosmicUnicorn()
 graphics = PicoGraphics(DISPLAY)
@@ -25,7 +22,7 @@ MENU = [
     ("SEQ", [
         ("LIFT", "elevator"),
         ("ABCD", "alphabet_sequence"),
-        ("TR-LI", None),
+        ("TRAF", "traffic_lights"),
         ("----", None),
     ]),
     ("STDBY", [
