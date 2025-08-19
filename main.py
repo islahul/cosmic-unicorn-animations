@@ -23,7 +23,7 @@ MENU = [
         ("LIFT", "elevator"),
         ("ABCD", "alphabet_sequence"),
         ("TRAF", "traffic_lights"),
-        ("----", None),
+        ("RBOW", "rainbow"),
     ]),
     ("STDBY", [
         ("WTIME", None),
@@ -157,3 +157,4 @@ while True:
     sub_idx = menu_select(submenu[0], submenu[1])
     effect_name = submenu[1][sub_idx][1]
     run_effect(effect_name)
+

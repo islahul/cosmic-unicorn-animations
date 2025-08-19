@@ -1,4 +1,5 @@
 import time
+import machine
 from cosmic import CosmicUnicorn
 from picographics import PicoGraphics, DISPLAY_COSMIC_UNICORN as DISPLAY
 
@@ -16,7 +17,7 @@ state = 0
 last_switch = 0
 
 # Durations in ms for each light
-DURATIONS = [4000, 4000, 2000]  # Red, Green, Yellow
+DURATIONS = [4000, 2000, 10000]  # Red, Yellow, Green
 
 # Colors
 RED = (255, 0, 0)
@@ -81,6 +82,13 @@ def draw():
 def main():
     init()
     while True:
+        # Check if any buttons are pressed to exit
+        if (cu.is_pressed(CosmicUnicorn.SWITCH_A) or 
+            cu.is_pressed(CosmicUnicorn.SWITCH_B) or 
+            cu.is_pressed(CosmicUnicorn.SWITCH_C) or 
+            cu.is_pressed(CosmicUnicorn.SWITCH_D)):
+            machine.reset()
+        
         draw()
         time.sleep(0.01)
 
